@@ -189,7 +189,8 @@ if __name__ == "__main__":
 |_|                 |_|
 
 #########################################################################
-# Author:   l3uddz                                                      #
+# Author:   l3uddz           
+# Modified by: Jolbol
 # URL:      https://github.com/l3uddz/plex_patrol                       #
 # --                                                                    #
 # Part of the Cloudbox project: https://cloudbox.rocks                  #
