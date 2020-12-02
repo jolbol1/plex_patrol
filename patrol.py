@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import time
 from threading import Thread
-from datetime import datetime, timedelta, time
+from datetime import datetime, time
 
 from utils import config
 from utils import logger
