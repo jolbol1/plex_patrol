@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import time
 from threading import Thread
+from datetime import datetime, timedelta, time
 
 from utils import config
 from utils import logger
@@ -38,9 +39,9 @@ def add_stream_ip(user, ip):
 
 def kill_paused_stream(stream, check_again_mins, kick_reason):
     log.info("%s will have their stream killed in %d mins, unless it is resumed", stream.user, check_again_mins)
-    #Tracker for total time spent paused
+    # Tracker for total time spent paused
     totalTimePaused = 0
-    while(1):
+    while (1):
         streamFound = False
         current_streams = server.get_streams()
         if current_streams is None:
@@ -54,21 +55,21 @@ def kill_paused_stream(stream, check_again_mins, kick_reason):
             if current_stream.session_id == stream.session_id:
                 streamFound = True
                 if current_stream.state == 'paused':
-                    #Increment total pause time by check interval and proceed to see if u
+                    # Increment total pause time by check interval and proceed to see if u
                     totalTimePaused += config.CHECK_INTERVAL
-                    if(totalTimePaused >= (check_again_mins * 60)):
-                            if server.kill_stream(stream.session_id, kick_reason):
-                                log.info("Kicked %s because their stream was still paused %d minutes later", stream.user,
-                                         check_again_mins)
-                                watchlist.remove(stream.session_id)
-                                return
-                            else:
-                                log.error("Unable to kick the stream of %s, not sure why...", stream.user)
-                                watchlist.remove(stream.session_id)
-                                return
+                    if (totalTimePaused >= (check_again_mins * 60)):
+                        if server.kill_stream(stream.session_id, kick_reason):
+                            log.info("Kicked %s because their stream was still paused %d minutes later", stream.user,
+                                     check_again_mins)
+                            watchlist.remove(stream.session_id)
+                            return
+                        else:
+                            log.error("Unable to kick the stream of %s, not sure why...", stream.user)
+                            watchlist.remove(stream.session_id)
+                            return
                     else:
-                            time.sleep(config.CHECK_INTERVAL)
-                            break
+                        time.sleep(config.CHECK_INTERVAL)
+                        break
                 else:
                     log.info("%s stream was resumed, so we wont kill their stream, they're in the clear!", stream.user)
                     watchlist.remove(stream.session_id)
@@ -78,13 +79,42 @@ def kill_paused_stream(stream, check_again_mins, kick_reason):
             watchlist.remove(stream.session_id)
             return
 
+
+def is_time_between(begin_time, end_time, check_time=None):
+    # If check time is not given, default to current UTC time
+    check_time = check_time or datetime.utcnow().time()
+    log.info("Check time: %s", check_time)
+    if begin_time < end_time:
+        return check_time >= begin_time and check_time <= end_time
+    else:  # crosses midnight
+        return check_time >= begin_time or check_time <= end_time
+
+
 def should_kick_stream(stream):
     # is stream using a blacklisted client
     for client in config.KICK_CLIENT_PLAYERS:
         if client.lower() in stream.player.lower():
             return True, 0, config.KICK_PLAYER_MESSAGE
 
-    # is this user already streaming from more than allowed ips?
+    if stream.user in config.BEDTIME_USERS:
+        log.info("User %s found in BEDTIME_USERS", stream.user)
+        file_path = config.BEDTIME_PATH + "/" + stream.user
+        try:
+            with open(file_path) as fp:
+                bedtime_str = fp.read()
+                log.info("User has bedtime set to %s", fp.read())
+        except IOError:
+            # If file doesnt exist, return false. They have not set a time.
+            log.info("No time file set at %S", file_path)
+            return False, 0, None
+        bedtime = bedtime_str.split(',')
+        hour = int(bedtime[0])
+        minute = int(bedtime[1])
+        hour2 = hour + config.BEDTIME_INTERVAL
+        if is_time_between(time(hour, minute), time(hour2, minute)):
+            return True, 0, config.KICK_BEDTIME_MESSAGE
+
+        # is this user already streaming from more than allowed ips?
     if config.KICK_MULTIPLE_IP and config.KICK_MULTIPLE_IP_MAX:
         add_stream_ip(stream.user, stream.ip)
         if check_stream_count(stream.user) > config.KICK_MULTIPLE_IP_MAX:
@@ -100,6 +130,7 @@ def should_kick_stream(stream):
             return True, config.KICK_PAUSED_GRACE_MINS, config.KICK_PAUSED_MESSAGE
         if stream.quality == '4K' and config.KICK_4K_TRANSCODE and stream.video_decision == 'transcode':
             return True, 0, config.KICK_4K_TRANSCODE_MESSAGE
+
 
     else:
         # stream is directplay - check specifics

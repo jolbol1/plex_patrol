@@ -34,3 +34,7 @@ KICK_PLAYER_MESSAGE = config('KICK_PLAYER_MESSAGE',
 KICK_MULTI_IP_MESSAGE = config('KICK_MULTI_IP_MESSAGE', 'You are not allowed to stream from more than 1 IP address!')
 
 WHITELISTED_USERS = config('WHITELISTED_USERS', [], cast=Csv())
+BEDTIME_USERS = config('BEDTIME_USERS', [], cast=Csv())
+BEDTIME_PATH = config('BEDTIME_PATH', '/path/to/userFiles')
+BEDTIME_INTERVAL = config('BEDTIME_INTERVAL', 1, cast=int)
+KICK_BEDTIME_MESSAGE = config('KICK_BEDTIME_MESSAGE', 'Sleepy Time')
